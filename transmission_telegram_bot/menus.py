@@ -27,9 +27,8 @@ def transsmission_client(client: int = 0) -> tuple[trans.Client, str, str, bool]
     except:  # noqa: E722
         if not client:
             raise ValueError
-        re = list(transsmission_client())
-        re[-1] = False
-        return tuple(re)
+        fallback_client, disk, name, _ = transsmission_client()
+        return (fallback_client, disk, name, False)
     return (
         tr,
         tr.get_session().download_dir,
@@ -72,7 +71,7 @@ def torrent_set_files(torrent_id: int, file_id: int, state: bool):
         trans_client.change_torrent(ids=torrent_id, files_unwanted=[file_id])
 
 
-def add_torrent_with_file(file: bytes) -> trans.Torrent:
+def add_torrent_with_file(file: bytes | bytearray) -> trans.Torrent:
     return trans_client.add_torrent(bytes(file), paused=True)
 
 
@@ -97,7 +96,7 @@ def get_memory() -> str:
         size_in_bytes = -1
 
     if size_in_bytes is None or size_in_bytes < 0:
-        size, unit = -1, ""
+        size, unit = -1.0, ""
     else:
         size, unit = trans_utils.format_size(size_in_bytes)
 
@@ -521,7 +520,7 @@ def change_server_menu(
             if server["name"] == CURRENT_SERVER:
                 name = f"{server['name']} 🟢"
             else:
-                name: str = server["name"]
+                name = server["name"]
             keyboard.append(
                 [
                     telegram.InlineKeyboardButton(

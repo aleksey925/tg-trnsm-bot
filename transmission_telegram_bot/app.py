@@ -164,6 +164,8 @@ async def torrent_file_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
 @utils.whitelist
 async def magnet_url_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message is None or update.message.text is None:
+        return
     magnet_url = update.message.text
     torrent = menus.add_torrent_with_magnet(magnet_url)
     await update.message.reply_text("Torrent added", do_quote=True)
