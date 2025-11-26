@@ -3,7 +3,7 @@ import base64
 import telegram
 import transmission_rpc as trans
 import transmission_rpc.utils as trans_utils
-from telegram.utils.helpers import escape_markdown
+from telegram.helpers import escape_markdown
 
 from . import config, utils
 

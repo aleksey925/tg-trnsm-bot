@@ -1,71 +1,14 @@
 import logging
 import math
-import time
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-import pyngrok.ngrok
 import transmission_rpc as trans
-
-if TYPE_CHECKING:
-    from telegram.ext import (
-        CallbackContext,
-        Updater,
-    )
-    from telegram.update import Update
 
 from . import config
 
 logger = logging.getLogger(__name__)
-
-
-def setup_updater(updater: Updater):
-    updaters = {
-        "ngrok": setup_ngrok_webhook,
-        "webserver": setup_webserver,
-        "polling": setup_polling,
-    }
-    updaters[config.UPDATER_TYPE](updater)
-
-
-def setup_ngrok_webhook(updater: Updater):
-    """
-    Setups ngrok tunnel and set telegram webhook on it
-    """
-    logger.info("Setting ngrok webhook")
-    logger.debug("Installing ngrok")
-    pyngrok.ngrok.install_ngrok()
-    logger.debug("Setuping tunnel")
-    webhook_tunnel = pyngrok.ngrok.connect(addr=config.PORT_NGROK_TUNNEL, proto="http", options={"bind_tls": True})
-    time.sleep(1)
-    public_url: str = webhook_tunnel.public_url
-    webhook = public_url.replace("http:", "https:")
-    logger.debug("Starting webhook")
-    updater.start_webhook(listen="127.0.0.1", port=config.PORT_NGROK_TUNNEL, url_path=config.TOKEN)
-    logger.debug("Setting webhook")
-    updater.bot.set_webhook(f"{webhook}/{config.TOKEN}")
-
-
-def setup_webserver(updater: Updater):
-    """
-    Setups webserver and set telegram webhook on it
-    Provide WEBHOOK_DOMAIN for this type of receiving updates
-    """
-    if config.WEBHOOK_DOMAIN:
-        logger.info("Starting webserver for webhook")
-        updater.start_webhook(listen="0.0.0.0", port=config.WEBHOOK_PORT, url_path=config.TOKEN)
-        logger.debug("Setting webhook")
-        updater.bot.set_webhook(f"{config.WEBHOOK_DOMAIN}/{config.TOKEN}")
-    else:
-        raise ValueError("WEBHOOK_DOMAIN env variable is not provided")
-
-
-def setup_polling(updater: Updater):
-    """
-    Polling type of receiving updates
-    """
-    updater.start_polling()
 
 
 def progress_bar(percent: float) -> str:
@@ -102,18 +45,13 @@ def file_progress(file: trans.File) -> float:
         return 0.0
 
 
-def whitelist(func: Callable[[Any, Any], Any]):
+def whitelist(func: Callable[..., Any]):
     @wraps(func)
-    def wrapped(
-        update: Update,
-        context: CallbackContext[Any, Any, Any],
-        *args: Any,
-        **kwargs: Any,
-    ):
-        user_id: int = update.effective_user.id  # type: ignore
+    async def wrapped(update: Any, context: Any, *args: Any, **kwargs: Any):
+        user_id: int = update.effective_user.id
         if user_id not in config.WHITELIST:
             logger.warning(f"Unauthorized access denied for {user_id}.")
             return
-        return func(update, context, *args, **kwargs)
+        return await func(update, context, *args, **kwargs)
 
     return wrapped
