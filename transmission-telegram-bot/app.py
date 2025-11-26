@@ -14,6 +14,8 @@ from telegram.ext import (
 
 from . import config, menus, utils
 
+logger = logging.getLogger(__name__)
+
 
 @utils.whitelist
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -267,6 +269,8 @@ async def change_server_inline(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.exception("Exception while handling an update", exc_info=context.error)
+
     text = "Something went wrong"
     if update and update.callback_query:
         query = update.callback_query
