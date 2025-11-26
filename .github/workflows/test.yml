@@ -1,0 +1,21 @@
+name: tests
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "main"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        uses: jdx/mise-action@v3
+      - name: Install dependencies
+        run: uv sync
+      - name: Run lint
+        run: uv run pre-commit run --all

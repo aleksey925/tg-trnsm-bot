@@ -1,7 +1,4 @@
 services:
   transmission-telegram-bot:
-    image: ghcr.io/vovcharaa/transmission-telegram-bot:latest
-    container_name: transmission-telegram-bot
+    image: ghcr.io/aleksey925/transmission-telegram-bot:latest
     restart: unless-stopped
-    env_file:
-      - .env
