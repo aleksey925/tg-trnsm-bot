@@ -1,8 +1,14 @@
-version: '3.7'
 services:
-  transmission-telegram-bot:
-    image: 'ghcr.io/vovcharaa/transmission-telegram-bot:latest'
-    container_name: 'transmission-telegram-bot'
+  transmission:
+    image: lscr.io/linuxserver/transmission:4.0.6
     restart: unless-stopped
-    env_file:
-     - bot.env
+    ports:
+      - "9091:9091"  # web interface
+      - "51413:51413"
+      - "51413:51413/udp"
+    environment:
+      - TZ=Asia/Nicosia
+      - USER=${TRANSMISSION_USER}
+      - PASS=${TRANSMISSION_PASS}
+    volumes:
+      - ./volume/media:/downloads

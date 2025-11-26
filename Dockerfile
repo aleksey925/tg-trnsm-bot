@@ -1,17 +1,37 @@
-FROM python:3.9 as build
-WORKDIR /app
-ENV VIRTUAL_ENV=/app/venv
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-COPY requirements.txt .
-RUN pip install wheel && \
-    python3 -m pip install -r requirements.txt --no-cache-dir
+FROM debian:13-slim AS exporter
 
-FROM python:3.9-slim
-WORKDIR /app
-COPY --from=build /app /app
-ENV VIRTUAL_ENV=/app/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-COPY . /app
-EXPOSE 8080/tcp
-CMD ["python", "-m", "transmission-telegram-bot"]
+RUN apt-get update \
+    && apt-get -y --no-install-recommends install \
+       sudo curl git ca-certificates build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV MISE_DATA_DIR="/mise"
+ENV MISE_CONFIG_DIR="/mise"
+ENV MISE_CACHE_DIR="/mise/cache"
+ENV MISE_INSTALL_PATH="/usr/local/bin/mise"
+ENV PATH="/mise/shims:$PATH"
+
+COPY mise.toml ./
+
+RUN curl https://mise.run | sh && \
+    mise trust && \
+    mise i
+
+WORKDIR /opt/app/
+
+COPY pyproject.toml uv.lock* ./
+
+RUN uv export -o requirements.txt --no-default-groups --no-hashes --no-annotate --frozen --no-emit-project
+
+#########################################################################
+FROM python:3.14-slim-bookworm
+
+WORKDIR /opt/app/
+
+COPY --from=exporter /opt/app/requirements.txt ./
+RUN pip install -r requirements.txt && rm -rf /root/.cache/pip
+
+COPY transmission_telegram_bot/ /opt/app/transmission_telegram_bot/
+
+CMD ["python", "-m", "transmission_telegram_bot"]

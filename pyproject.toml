@@ -1,0 +1,52 @@
+[project]
+name = "transmission-telegram-bot"
+version = "0.1.0"
+requires-python = ">=3.14, <4"
+dependencies = [
+    "python-telegram-bot>=22.5",
+    "python-dotenv>=1.2.1",
+    "transmission-rpc>=7.0.11",
+]
+
+[dependency-groups]
+dev = [
+    "mypy==1.18.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint]
+select = [
+    "A",    # flake8-builtins
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "T20",  # flake8-print
+    "C90",  # flake8-complexity (mccabe)
+    "UP",   # pyupgrade
+    "RUF",  # ruff
+    "S",    # flake8-bandit
+]
+ignore = [
+    "A003",  # class attribute {name} is shadowing a python builtin
+    "S101",  # use of assert detected
+    "S104",  # possible binding to all interfaces (expected in Docker)
+]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+show_error_codes = true
+no_implicit_optional = false
+disable_error_code = ["no-untyped-def", "union-attr", "arg-type", "no-untyped-call"]
