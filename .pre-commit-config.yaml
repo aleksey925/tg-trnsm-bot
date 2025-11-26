@@ -11,3 +11,13 @@ repos:
       - id: ruff-format
       - id: ruff
         args: ["--fix"]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        language: system
+        entry: mypy
+        pass_filenames: false
+        types: [python]
+        args: [ "transmission_telegram_bot" ]

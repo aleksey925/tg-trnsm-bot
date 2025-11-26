@@ -8,6 +8,11 @@ dependencies = [
     "python-dotenv>=1.2.1",
 ]
 
+[dependency-groups]
+dev = [
+    "mypy==1.18.2",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -42,3 +47,10 @@ ignore = [
     "S104",  # possible binding to all interfaces (expected in Docker)
     "N999",  # invalid module name (dashes in directory name)
 ]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+show_error_codes = true
+no_implicit_optional = false
+disable_error_code = ["no-untyped-def", "union-attr"]

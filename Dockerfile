@@ -32,6 +32,6 @@ WORKDIR /opt/app/
 COPY --from=exporter /opt/app/requirements.txt ./
 RUN pip install -r requirements.txt && rm -rf /root/.cache/pip
 
-COPY transmission-telegram-bot/ /opt/app/transmission-telegram-bot/
+COPY transmission_telegram_bot/ /opt/app/transmission_telegram_bot/
 
-CMD ["python", "-m", "transmission-telegram-bot"]
+CMD ["python", "-m", "transmission_telegram_bot"]
