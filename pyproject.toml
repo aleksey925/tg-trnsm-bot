@@ -42,7 +42,6 @@ ignore = [
     "A003",  # class attribute {name} is shadowing a python builtin
     "S101",  # use of assert detected
     "S104",  # possible binding to all interfaces (expected in Docker)
-    "N999",  # invalid module name (dashes in directory name)
 ]
 
 [tool.mypy]

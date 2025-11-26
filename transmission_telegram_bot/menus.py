@@ -89,17 +89,17 @@ def add_torrent() -> str:
 
 
 def get_memory() -> str:
+    size_in_bytes = None
     try:
         size_in_bytes = trans_client.free_space(DISK)
     except TransmissionError:
         logger.exception("Failed to get free space")
-        size_in_bytes = -1
 
-    if size_in_bytes is None or size_in_bytes < 0:
+    if size_in_bytes is None:
         size, unit = "unknown", ""
     else:
-        size, unit = trans_utils.format_size(size_in_bytes)
-        size = round(size, 2)
+        _size, unit = trans_utils.format_size(size_in_bytes)
+        size = str(round(_size, 2))
 
     return f"Free disk space: {size} {unit}"
 
