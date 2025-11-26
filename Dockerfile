@@ -22,7 +22,7 @@ WORKDIR /opt/app/
 
 COPY pyproject.toml uv.lock* ./
 
-RUN uv export -o requirements.txt --no-default-groups --no-hashes --no-annotate --frozen
+RUN uv export -o requirements.txt --no-default-groups --no-hashes --no-annotate --frozen --no-emit-project
 
 #########################################################################
 FROM python:3.14-slim-bookworm
