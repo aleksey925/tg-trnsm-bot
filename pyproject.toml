@@ -6,6 +6,7 @@ dependencies = [
     "python-telegram-bot[job-queue]>=22.5",
     "python-dotenv>=1.2.1",
     "transmission-rpc>=7.0.11",
+    "structlog>=25.5.0",
 ]
 
 [dependency-groups]

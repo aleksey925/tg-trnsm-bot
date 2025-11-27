@@ -13,6 +13,7 @@ from telegram.ext import (
 )
 
 from transmission_telegram_bot import config, menus, utils
+from transmission_telegram_bot.logger import init_logger
 
 logger = logging.getLogger(__name__)
 
@@ -372,7 +373,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def run() -> None:
-    logger.setLevel(logging.INFO)
+    init_logger()
 
     application = Application.builder().token(config.TOKEN).build()
 
@@ -400,5 +401,4 @@ def run() -> None:
     application.add_handler(CallbackQueryHandler(get_torrents_inline, pattern=r"torrentsgoto_.*"))
     application.add_handler(CallbackQueryHandler(torrent_menu_inline, pattern=r"torrent_.*"))
 
-    logger.info("Starting bot...")
     application.run_polling()
