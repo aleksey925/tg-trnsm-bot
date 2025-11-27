@@ -44,7 +44,7 @@ async def update_torrent_status(context: ContextTypes.DEFAULT_TYPE) -> None:
     torrent_id: int = data["torrent_id"]
 
     data["iteration"] += 1
-    remaining = AUTO_UPDATE_DURATION_SEC - (data["iteration"] * AUTO_UPDATE_INTERVAL_SEC)
+    elapsed = data["iteration"] * AUTO_UPDATE_INTERVAL_SEC
 
     try:
         status = menus.get_torrent_status(torrent_id)
@@ -52,9 +52,10 @@ async def update_torrent_status(context: ContextTypes.DEFAULT_TYPE) -> None:
         job.schedule_removal()
         return
 
-    if status not in AUTO_UPDATE_STATUSES or remaining <= 0:
+    should_stop = status not in AUTO_UPDATE_STATUSES or elapsed >= AUTO_UPDATE_DURATION_SEC
+    remaining: int | None = None if should_stop else AUTO_UPDATE_DURATION_SEC - elapsed
+    if should_stop:
         job.schedule_removal()
-        return
 
     try:
         text, reply_markup = menus.torrent_menu(torrent_id, auto_refresh_remaining=remaining)
@@ -119,19 +120,20 @@ async def torrent_menu_inline(update: Update, context: ContextTypes.DEFAULT_TYPE
     chat_id = query.message.chat_id
     message_id = query.message.message_id
 
+    action_performed = False
     if len(callback) == 3 and callback[2] != "reload":
         if callback[2] == "start":
             menus.start_torrent(torrent_id)
             await query.answer(text="Started")
-            await asyncio.sleep(0.2)
+            action_performed = True
         elif callback[2] == "stop":
             menus.stop_torrent(torrent_id)
             await query.answer(text="Stopped")
-            await asyncio.sleep(0.2)
+            action_performed = True
         elif callback[2] == "verify":
             menus.verify_torrent(torrent_id)
             await query.answer(text="Verifying")
-            await asyncio.sleep(0.2)
+            action_performed = True
     is_reload = len(callback) == 3 and callback[2] == "reload"
 
     try:
@@ -143,30 +145,27 @@ async def torrent_menu_inline(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
         return
 
-    should_auto_update = status in AUTO_UPDATE_STATUSES
+    should_auto_update = status in AUTO_UPDATE_STATUSES or action_performed
     auto_refresh_remaining = AUTO_UPDATE_DURATION_SEC if should_auto_update else None
     text, reply_markup = menus.torrent_menu(torrent_id, auto_refresh_remaining=auto_refresh_remaining)
 
     cancel_torrent_update_job(context, chat_id, message_id)
-    message_updated = False
 
     if is_reload:
         try:
             await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
             await query.answer(text="Reloaded")
-            message_updated = True
         except BadRequest:
             await query.answer(text="Nothing to reload")
     else:
         await query.answer()
         try:
             await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
-            message_updated = True
         except BadRequest as exc:
             if not str(exc).startswith("Message is not modified"):
                 raise
 
-    if should_auto_update and message_updated:
+    if should_auto_update:
         context.job_queue.run_repeating(
             update_torrent_status,
             interval=AUTO_UPDATE_INTERVAL_SEC,
