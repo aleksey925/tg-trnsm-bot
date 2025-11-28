@@ -1,13 +1,17 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from functools import wraps
 from typing import Any
 
 import transmission_rpc as trans
+from telegram import Update
+from telegram.ext import ContextTypes
 
 from . import config
 
 logger = logging.getLogger(__name__)
+
+Handler = Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable[Any]]
 
 
 def formated_eta(torrent: trans.Torrent) -> str:
@@ -38,13 +42,13 @@ def file_progress(file: trans.File) -> float:
         return 0.0
 
 
-def whitelist(func: Callable[..., Any]):
+def whitelist(func: Handler) -> Handler:
     @wraps(func)
-    async def wrapped(update: Any, context: Any, *args: Any, **kwargs: Any):
+    async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Any:
         user_id: int = update.effective_user.id
         if user_id not in config.WHITELIST:
             logger.warning(f"Unauthorized access denied for {user_id}.")
             return
-        return await func(update, context, *args, **kwargs)
+        return await func(update, context)
 
     return wrapped

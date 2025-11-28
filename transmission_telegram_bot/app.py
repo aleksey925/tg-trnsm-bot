@@ -382,6 +382,22 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text)
 
 
+COMMANDS: dict[str, tuple[str | None, utils.Handler]] = {
+    "start": (None, start),
+    "menu": ("Show main menu", start),
+    "add": ("Add new torrent", add),
+    "torrents": ("List all torrents", get_torrents_command),
+    "memory": ("Show free disk space", memory),
+}
+
+
+async def post_init(application: Application[ContextTypes.DEFAULT_TYPE]) -> None:  # type: ignore[type-arg]
+    from telegram import BotCommand
+
+    bot_commands = [BotCommand(name, desc) for name, (desc, _) in COMMANDS.items() if desc]
+    await application.bot.set_my_commands(bot_commands)
+
+
 def run() -> None:
     init_logger(
         log_level=config.LOG_LEVEL,
@@ -389,17 +405,15 @@ def run() -> None:
         log_timestamp_format=config.LOG_TIMESTAMP_FORMAT,
     )
 
-    application = Application.builder().token(config.TOKEN).build()
+    application = Application.builder().token(config.TOKEN).post_init(post_init).build()
+
+    for name, (_, handler) in COMMANDS.items():
+        application.add_handler(CommandHandler(name, handler))
 
     application.add_error_handler(error_handler)
     application.add_handler(MessageHandler(filters.Document.FileExtension("torrent"), torrent_file_handler))
     application.add_handler(MessageHandler(filters.Regex(MAGNET_PATTERN), magnet_url_handler))
     application.add_handler(MessageHandler(filters.Regex(TORRENT_URL_PATTERN), torrent_url_handler))
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("menu", start))
-    application.add_handler(CommandHandler("add", add))
-    application.add_handler(CommandHandler("memory", memory))
-    application.add_handler(CommandHandler("torrents", get_torrents_command))
     application.add_handler(CallbackQueryHandler(torrent_adding, pattern=r"addmenu_.*"))
     application.add_handler(CallbackQueryHandler(select_file, pattern=r"fileselect_.*"))
     application.add_handler(CallbackQueryHandler(select_for_download, pattern=r"selectfiles_.*"))

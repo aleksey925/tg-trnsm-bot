@@ -18,14 +18,12 @@ STATUS_LIST = {
     "stopped": "⏹️",
 }
 
-
 trans_client = trans.Client(
     host=config.TRANSMISSION_HOST,
     port=config.TRANSMISSION_PORT,
     username=config.TRANSMISSION_USERNAME,
     password=config.TRANSMISSION_PASSWORD,
 )
-DISK = trans_client.get_session().download_dir
 
 
 def get_torrent_status(torrent_id: int) -> str:
@@ -68,18 +66,18 @@ def add_torrent_with_url(url: str) -> trans.Torrent:
 
 
 def menu() -> str:
-    text = "List of available commands:\n/torrents - List all torrents\n/memory - Available memory\n/add - Add torrent"
+    text = "Commands:\n/add - add torrent\n/torrents - list all torrents\n/memory - available memory"
     return text
 
 
 def add_torrent() -> str:
-    return "Just send torrent file or magnet url to the bot"
+    return "Just send me torrent file, magnet url or link to torrent file"
 
 
 def get_memory() -> str:
     size_in_bytes = None
     try:
-        size_in_bytes = trans_client.free_space(DISK)
+        size_in_bytes = trans_client.free_space(trans_client.get_session().download_dir)
     except TransmissionError:
         logger.exception("Failed to get free space")
 
