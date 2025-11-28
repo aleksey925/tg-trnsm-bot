@@ -34,8 +34,6 @@ TorrentAction = Literal["view", "start", "stop", "verify", "reload"]
 
 @dataclass(frozen=True, slots=True)
 class TorrentCallback:
-    """Parsed callback data for torrent menu: torrent_{id}[_{action}]"""
-
     torrent_id: int
     action: TorrentAction = "view"
 
@@ -424,7 +422,11 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def run() -> None:
-    init_logger()
+    init_logger(
+        log_level=config.LOG_LEVEL,
+        log_format=config.LOG_FORMAT,
+        log_timestamp_format=config.LOG_TIMESTAMP_FORMAT,
+    )
 
     application = Application.builder().token(config.TOKEN).build()
 

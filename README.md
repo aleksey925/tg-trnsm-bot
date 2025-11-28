@@ -18,15 +18,18 @@ monitor download progress, and add new torrents directly from Telegram.
 
 The bot is configured via environment variables:
 
-| Variable                | Required | Default     | Description                                                      |
-|-------------------------|----------|-------------|------------------------------------------------------------------|
-| `TELEGRAM_TOKEN`        | Yes      | —           | Telegram Bot API token from [@BotFather](https://t.me/BotFather) |
-| `WHITELIST`             | Yes      | —           | Comma-separated list of allowed Telegram user IDs                |
-| `TRANSMISSION_HOST`     | No       | `127.0.0.1` | Transmission RPC host                                            |
-| `TRANSMISSION_PORT`     | No       | `9091`      | Transmission RPC port                                            |
-| `TRANSMISSION_USERNAME` | No       | —           | Transmission RPC username                                        |
-| `TRANSMISSION_PASSWORD` | No       | —           | Transmission RPC password                                        |
-| `TRANSMISSION_CLIENTS`  | No       | —           | JSON array for multi-server setup (see below)                    |
+| Variable                | Required | Default          | Description                                                      |
+|-------------------------|----------|------------------|------------------------------------------------------------------|
+| `TELEGRAM_TOKEN`        | Yes      | —                | Telegram Bot API token from [@BotFather](https://t.me/BotFather) |
+| `WHITELIST`             | Yes      | —                | Comma-separated list of allowed Telegram user IDs                |
+| `TRANSMISSION_HOST`     | No       | `127.0.0.1`      | Transmission RPC host                                            |
+| `TRANSMISSION_PORT`     | No       | `9091`           | Transmission RPC port                                            |
+| `TRANSMISSION_USERNAME` | No       | —                | Transmission RPC username                                        |
+| `TRANSMISSION_PASSWORD` | No       | —                | Transmission RPC password                                        |
+| `TRANSMISSION_CLIENTS`  | No       | —                | JSON array for multi-server setup (see below)                    |
+| `LOG_LEVEL`             | No       | `INFO`           | Logging level (DEBUG, INFO, WARNING, ERROR)                      |
+| `LOG_FORMAT`            | No       | `console`        | Log output format: `console` (human-readable) or `json`          |
+| `LOG_TIMESTAMP_FORMAT`  | No       | `iso` (ISO 8601) | Timestamp format, e.g. `%Y-%m-%d %H:%M:%S`                       |
 
 ### Multi-server configuration
 
@@ -60,7 +63,7 @@ To manage multiple Transmission instances, use `TRANSMISSION_CLIENTS` instead of
         image: ghcr.io/aleksey925/transmission-telegram-bot:latest
         restart: unless-stopped
         env_file: .env
-    
+
       transmission:
         image: lscr.io/linuxserver/transmission:latest
         restart: unless-stopped

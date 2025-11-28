@@ -27,3 +27,7 @@ else:
     ]
 
 WHITELIST = [int(i.strip()) for i in os.environ["WHITELIST"].split(",")]
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FORMAT = os.getenv("LOG_FORMAT", "console")
+LOG_TIMESTAMP_FORMAT = os.getenv("LOG_TIMESTAMP_FORMAT", "iso")
