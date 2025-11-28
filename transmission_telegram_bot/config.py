@@ -1,4 +1,3 @@
-import json
 import os
 
 from dotenv import load_dotenv
@@ -6,29 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.environ["TELEGRAM_TOKEN"]
+WHITELIST = [int(i.strip()) for i in os.environ["WHITELIST"].split(",")]
 
-TRANSSMISION_HOST = os.getenv("TRANSSMISION_HOST", "127.0.0.1")
-TRANSSMISION_PORT = int(os.getenv("TRANSSMISION_PORT", 9091))
-TRANSSMISION_USERNAME = os.getenv("TRANSSMISION_USERNAME")
-TRANSSMISION_PASSWORD = os.getenv("TRANSSMISION_PASSWORD")
+TRANSMISSION_HOST = os.getenv("TRANSMISSION_HOST", "127.0.0.1")
+TRANSMISSION_PORT = int(os.getenv("TRANSMISSION_PORT", "9091"))
+TRANSMISSION_USERNAME = os.getenv("TRANSMISSION_USERNAME")
+TRANSMISSION_PASSWORD = os.getenv("TRANSMISSION_PASSWORD")
 
-
-_transmission_clients = os.getenv("TRANSMISSION_CLIENTS")
-if _transmission_clients:
-    TRANSMISSION_CLIENTS = json.loads(_transmission_clients)
-else:
-    TRANSMISSION_CLIENTS = [
-        {
-            "name": "Default",
-            "host": TRANSSMISION_HOST,
-            "port": TRANSSMISION_PORT,
-            "username": TRANSSMISION_USERNAME,
-            "password": TRANSSMISION_PASSWORD,
-        }
-    ]
-
-
-_whitelist = os.environ["WHITELIST"]
-WHITELIST = [int(i.strip()) for i in _whitelist.split(",")]
-
-PROGRESS_BAR_EMOJIS = {"done": "📦", "inprogress": "⬜"}
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FORMAT = os.getenv("LOG_FORMAT", "console")
+LOG_TIMESTAMP_FORMAT = os.getenv("LOG_TIMESTAMP_FORMAT", "iso")

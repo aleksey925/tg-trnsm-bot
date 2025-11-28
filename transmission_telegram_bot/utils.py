@@ -1,5 +1,4 @@
 import logging
-import math
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
@@ -9,14 +8,6 @@ import transmission_rpc as trans
 from . import config
 
 logger = logging.getLogger(__name__)
-
-
-def progress_bar(percent: float) -> str:
-    progres = math.floor(percent / 10)
-    progres_string = (
-        f"{config.PROGRESS_BAR_EMOJIS['done'] * progres}{config.PROGRESS_BAR_EMOJIS['inprogress'] * (10 - progres)}"
-    )
-    return progres_string
 
 
 def formated_eta(torrent: trans.Torrent) -> str:
