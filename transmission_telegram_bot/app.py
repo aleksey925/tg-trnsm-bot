@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 AUTO_UPDATE_INTERVAL_SEC = 1
 AUTO_UPDATE_DURATION_SEC = 60
-AUTO_UPDATE_STATUSES = {"downloading", "seeding"}
+AUTO_UPDATE_STATUSES = {"downloading", "seeding", "checking"}
 
 
 def get_job_name(chat_id: int, message_id: int) -> str:
