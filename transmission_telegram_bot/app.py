@@ -14,6 +14,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram.helpers import escape_markdown
 from transmission_rpc.error import TransmissionError
 
 from transmission_telegram_bot import config, menus, utils
@@ -28,6 +29,8 @@ ACTIONS_REQUIRING_AUTO_UPDATE = {"start", "verify"}
 
 MAGNET_PATTERN = re.compile(r"magnet:\?xt=urn:btih:[^\s]+")
 TORRENT_URL_PATTERN = re.compile(r"https?://[^\s]+\.torrent\b", re.IGNORECASE)
+
+monitored_torrents: dict[int, dict[str, str | float]] = {}
 
 TorrentAction = Literal["view", "start", "stop", "verify", "reload"]
 
@@ -371,6 +374,62 @@ async def select_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
 
 
+async def send_completion_notification(context: ContextTypes.DEFAULT_TYPE, torrent_name: str, status: str) -> None:
+    message = f"*{escape_markdown(torrent_name, 2)} downloaded*"
+    for chat_id in config.WHITELIST:
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode="MarkdownV2",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send notification to {chat_id}: {e}")
+
+
+async def monitor_torrent_completion(context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        all_torrents = menus.trans_client.get_torrents()
+    except Exception:
+        logger.exception("Failed to get torrents list for monitoring")
+        return
+
+    for torrent in all_torrents:
+        torrent_id = torrent.id
+        current_status = torrent.status
+        current_progress = round(torrent.progress, 1)
+
+        if current_progress == 100.0:
+            previous_state = monitored_torrents.get(torrent_id)
+            if previous_state is None:
+                if current_status in ("seeding", "stopped"):
+                    await send_completion_notification(context, torrent.name, current_status)
+                    monitored_torrents[torrent_id] = {
+                        "status": current_status,
+                        "progress": current_progress,
+                    }
+            else:
+                previous_status = previous_state["status"]
+                if previous_status != current_status and current_status in ("seeding", "stopped"):
+                    await send_completion_notification(context, torrent.name, current_status)
+
+                monitored_torrents[torrent_id] = {
+                    "status": current_status,
+                    "progress": current_progress,
+                }
+        else:
+            monitored_torrents[torrent_id] = {
+                "status": current_status,
+                "progress": current_progress,
+            }
+
+    # cleanup: remove torrents that no longer exist
+    current_torrent_ids = {t.id for t in all_torrents}
+    removed_ids = set(monitored_torrents.keys()) - current_torrent_ids
+    for torrent_id in removed_ids:
+        del monitored_torrents[torrent_id]
+
+
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.exception("Exception while handling an update", exc_info=context.error)
 
@@ -396,6 +455,15 @@ async def post_init(application: Application[ContextTypes.DEFAULT_TYPE]) -> None
 
     bot_commands = [BotCommand(name, desc) for name, (desc, _) in COMMANDS.items() if desc]
     await application.bot.set_my_commands(bot_commands)
+
+    if config.NOTIFICATIONS_ENABLED:
+        application.job_queue.run_repeating(
+            monitor_torrent_completion,
+            interval=config.NOTIFICATION_CHECK_INTERVAL_SEC,
+            first=config.NOTIFICATION_CHECK_INTERVAL_SEC,
+            name="global_torrent_monitor",
+        )
+        logger.info(f"Torrent completion monitoring started (interval: {config.NOTIFICATION_CHECK_INTERVAL_SEC}s)")
 
 
 def run() -> None:

@@ -30,7 +30,11 @@ FROM python:3.14-slim-bookworm
 WORKDIR /opt/app/
 
 COPY --from=exporter /opt/app/requirements.txt ./
-RUN pip install -r requirements.txt && rm -rf /root/.cache/pip
+
+RUN pip install --system --no-cache -r requirements.txt && \
+    find /usr/local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find /usr/local -type f -name "*.pyc" -delete 2>/dev/null || true && \
+    rm -rf /root/.cache /tmp/*
 
 COPY transmission_telegram_bot/ /opt/app/transmission_telegram_bot/
 
