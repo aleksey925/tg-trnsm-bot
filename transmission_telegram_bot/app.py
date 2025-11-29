@@ -375,7 +375,7 @@ async def select_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
 
 
-async def send_completion_notification(context: ContextTypes.DEFAULT_TYPE, torrent_name: str, status: str) -> None:
+async def send_completion_notification(context: ContextTypes.DEFAULT_TYPE, torrent_name: str) -> None:
     message = f"*{escape_markdown(torrent_name, 2)} downloaded*"
     for chat_id in config.WHITELIST:
         try:
@@ -416,7 +416,7 @@ async def monitor_torrent_completion(context: ContextTypes.DEFAULT_TYPE) -> None
 
         if current_progress == 100.0 and current_status in ("seeding", "stopped"):
             if previous_state is None or float(previous_state["progress"]) < 100.0:
-                await send_completion_notification(context, torrent.name, current_status)
+                await send_completion_notification(context, torrent.name)
 
         monitored_torrents[torrent_id] = {
             "status": current_status,
