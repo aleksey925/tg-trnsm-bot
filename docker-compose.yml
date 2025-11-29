@@ -12,3 +12,12 @@ services:
       - PASS=${TRANSMISSION_PASS}
     volumes:
       - ./volume/media:/downloads
+
+  transmission-tg-bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TRANSMISSION_HOST=transmission
+    links:
+      - transmission

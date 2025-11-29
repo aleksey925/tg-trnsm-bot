@@ -31,6 +31,7 @@ MAGNET_PATTERN = re.compile(r"magnet:\?xt=urn:btih:[^\s]+")
 TORRENT_URL_PATTERN = re.compile(r"https?://[^\s]+\.torrent\b", re.IGNORECASE)
 
 monitored_torrents: dict[int, dict[str, str | float]] = {}
+_monitor_initialized = False
 
 TorrentAction = Literal["view", "start", "stop", "verify", "reload"]
 
@@ -246,7 +247,7 @@ async def delete_torrent_action_inline(update: Update, context: ContextTypes.DEF
         menus.delete_torrent(torrent_id, True)
     else:
         menus.delete_torrent(torrent_id)
-    await query.answer(text="✅Deleted")
+    await query.answer(text="Deleted")
     await asyncio.sleep(0.1)
     torrent_list, keyboard = menus.get_torrents()
     if torrent_list == "Nothing to display":
@@ -309,7 +310,7 @@ async def torrent_adding_actions(update: Update, context: ContextTypes.DEFAULT_T
         if callback[2] == "start":
             menus.start_torrent(torrent_id)
             text, reply_markup = menus.torrent_menu(torrent_id, auto_refresh_remaining=AUTO_UPDATE_DURATION_SEC)
-            await query.answer(text="✅Started")
+            await query.answer(text="Started")
             await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
             context.job_queue.run_repeating(
                 update_torrent_status,
@@ -325,8 +326,8 @@ async def torrent_adding_actions(update: Update, context: ContextTypes.DEFAULT_T
             )
         elif callback[2] == "cancel":
             menus.delete_torrent(torrent_id, True)
-            await query.answer(text="✅Canceled")
-            await query.edit_message_text("Torrent deleted🗑")
+            await query.answer(text="Canceled")
+            await query.edit_message_text("Torrent deleted")
 
 
 @utils.whitelist
@@ -374,7 +375,7 @@ async def select_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
 
 
-async def send_completion_notification(context: ContextTypes.DEFAULT_TYPE, torrent_name: str, status: str) -> None:
+async def send_completion_notification(context: ContextTypes.DEFAULT_TYPE, torrent_name: str) -> None:
     message = f"*{escape_markdown(torrent_name, 2)} downloaded*"
     for chat_id in config.WHITELIST:
         try:
@@ -388,10 +389,22 @@ async def send_completion_notification(context: ContextTypes.DEFAULT_TYPE, torre
 
 
 async def monitor_torrent_completion(context: ContextTypes.DEFAULT_TYPE) -> None:
+    global _monitor_initialized
+
     try:
         all_torrents = menus.trans_client.get_torrents()
     except Exception:
         logger.exception("Failed to get torrents list for monitoring")
+        return
+
+    if not _monitor_initialized:
+        for torrent in all_torrents:
+            monitored_torrents[torrent.id] = {
+                "status": torrent.status,
+                "progress": round(torrent.progress, 1),
+            }
+        _monitor_initialized = True
+        logger.info(f"Initialized torrent monitor with {len(all_torrents)} torrents")
         return
 
     for torrent in all_torrents:
@@ -399,29 +412,16 @@ async def monitor_torrent_completion(context: ContextTypes.DEFAULT_TYPE) -> None
         current_status = torrent.status
         current_progress = round(torrent.progress, 1)
 
-        if current_progress == 100.0:
-            previous_state = monitored_torrents.get(torrent_id)
-            if previous_state is None:
-                if current_status in ("seeding", "stopped"):
-                    await send_completion_notification(context, torrent.name, current_status)
-                    monitored_torrents[torrent_id] = {
-                        "status": current_status,
-                        "progress": current_progress,
-                    }
-            else:
-                previous_status = previous_state["status"]
-                if previous_status != current_status and current_status in ("seeding", "stopped"):
-                    await send_completion_notification(context, torrent.name, current_status)
+        previous_state = monitored_torrents.get(torrent_id)
 
-                monitored_torrents[torrent_id] = {
-                    "status": current_status,
-                    "progress": current_progress,
-                }
-        else:
-            monitored_torrents[torrent_id] = {
-                "status": current_status,
-                "progress": current_progress,
-            }
+        if current_progress == 100.0 and current_status in ("seeding", "stopped"):
+            if previous_state is None or float(previous_state["progress"]) < 100.0:
+                await send_completion_notification(context, torrent.name)
+
+        monitored_torrents[torrent_id] = {
+            "status": current_status,
+            "progress": current_progress,
+        }
 
     # cleanup: remove torrents that no longer exist
     current_torrent_ids = {t.id for t in all_torrents}
