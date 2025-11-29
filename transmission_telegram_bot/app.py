@@ -247,7 +247,7 @@ async def delete_torrent_action_inline(update: Update, context: ContextTypes.DEF
         menus.delete_torrent(torrent_id, True)
     else:
         menus.delete_torrent(torrent_id)
-    await query.answer(text="✅Deleted")
+    await query.answer(text="Deleted")
     await asyncio.sleep(0.1)
     torrent_list, keyboard = menus.get_torrents()
     if torrent_list == "Nothing to display":
@@ -310,7 +310,7 @@ async def torrent_adding_actions(update: Update, context: ContextTypes.DEFAULT_T
         if callback[2] == "start":
             menus.start_torrent(torrent_id)
             text, reply_markup = menus.torrent_menu(torrent_id, auto_refresh_remaining=AUTO_UPDATE_DURATION_SEC)
-            await query.answer(text="✅Started")
+            await query.answer(text="Started")
             await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
             context.job_queue.run_repeating(
                 update_torrent_status,
@@ -326,8 +326,8 @@ async def torrent_adding_actions(update: Update, context: ContextTypes.DEFAULT_T
             )
         elif callback[2] == "cancel":
             menus.delete_torrent(torrent_id, True)
-            await query.answer(text="✅Canceled")
-            await query.edit_message_text("Torrent deleted🗑")
+            await query.answer(text="Canceled")
+            await query.edit_message_text("Torrent deleted")
 
 
 @utils.whitelist
