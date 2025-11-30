@@ -17,8 +17,8 @@ from telegram.ext import (
 from telegram.helpers import escape_markdown
 from transmission_rpc.error import TransmissionError
 
-from transmission_telegram_bot import config, menus, utils
-from transmission_telegram_bot.logger import init_logger
+from tg_trnsm_bot import config, menus, utils
+from tg_trnsm_bot.logger import init_logger
 
 logger = logging.getLogger(__name__)
 

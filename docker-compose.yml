@@ -13,7 +13,7 @@ services:
     volumes:
       - ./volume/media:/downloads
 
-  transmission-tg-bot:
+  tg-trnsm-bot:
     build: .
     restart: unless-stopped
     env_file: .env

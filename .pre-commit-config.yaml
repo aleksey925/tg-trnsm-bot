@@ -20,4 +20,4 @@ repos:
         entry: mypy
         pass_filenames: false
         types: [python]
-        args: [ "transmission_telegram_bot" ]
+        args: [ "tg_trnsm_bot" ]

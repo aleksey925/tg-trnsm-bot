@@ -36,6 +36,6 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     find /usr/local -type f -name "*.pyc" -delete 2>/dev/null || true && \
     rm -rf /root/.cache /tmp/*
 
-COPY transmission_telegram_bot/ /opt/app/transmission_telegram_bot/
+COPY tg_trnsm_bot/ /opt/app/tg_trnsm_bot/
 
-CMD ["python", "-m", "transmission_telegram_bot"]
+CMD ["python", "-m", "tg_trnsm_bot"]

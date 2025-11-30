@@ -1,5 +1,5 @@
-Transmission Telegram Bot
-=========================
+tg-trnsm-bot
+============
 
 Telegram bot for managing Transmission torrent client. Allows you to control torrents,
 monitor download progress, and add new torrents directly from Telegram.
@@ -50,7 +50,7 @@ The bot is configured via environment variables:
     ```yaml
     services:
       bot:
-        image: ghcr.io/aleksey925/transmission-telegram-bot:latest
+        image: ghcr.io/aleksey925/tg-trnsm-bot:latest
         restart: unless-stopped
         env_file: .env
 
