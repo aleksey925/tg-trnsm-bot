@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
-from telegram import Message, Update
+from telegram import BotCommand, Message, Update
 from telegram.error import BadRequest
 from telegram.ext import (
     Application,
@@ -464,8 +464,6 @@ COMMANDS: dict[str, tuple[str | None, utils.Handler]] = {
 
 
 async def post_init(application: Application[Any, BotContext, Any, Any, Any, Any]) -> None:
-    from telegram import BotCommand
-
     bot_commands = [BotCommand(name, desc) for name, (desc, _) in COMMANDS.items() if desc]
     await application.bot.set_my_commands(bot_commands)
 

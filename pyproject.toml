@@ -30,17 +30,18 @@ quote-style = "double"
 
 [tool.ruff.lint]
 select = [
-    "A",    # flake8-builtins
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "N",    # pep8-naming
-    "T20",  # flake8-print
-    "C90",  # flake8-complexity (mccabe)
-    "UP",   # pyupgrade
-    "RUF",  # ruff
-    "S",    # flake8-bandit
+    "A",        # flake8-builtins
+    "E",        # pycodestyle errors
+    "W",        # pycodestyle warnings
+    "F",        # pyflakes
+    "I",        # isort
+    "N",        # pep8-naming
+    "T20",      # flake8-print
+    "C90",      # flake8-complexity (mccabe)
+    "UP",       # pyupgrade
+    "RUF",      # ruff
+    "S",        # flake8-bandit
+    "PLC0415",  # import-outside-top-level
 ]
 ignore = [
     "A003",  # class attribute {name} is shadowing a python builtin
