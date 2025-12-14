@@ -126,7 +126,7 @@ async def get_torrents_command(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def get_torrents_inline(update: Update, context: BotContext) -> None:
-    qc = utils.get_inline_query_context(update)
+    qc = utils.get_callback_query_context(update)
     callback = qc.parse_callback()
     start_point = int(callback[1])
     cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
@@ -144,7 +144,7 @@ async def get_torrents_inline(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def torrent_menu_inline(update: Update, context: BotContext) -> None:
-    qc = utils.get_inline_query_context(update)
+    qc = utils.get_callback_query_context(update)
     cb = TorrentCallback.parse(qc.data)
 
     if cb.action == "start":
@@ -198,7 +198,7 @@ async def torrent_menu_inline(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def torrent_files_inline(update: Update, context: BotContext) -> None:
-    qc = utils.get_inline_query_context(update)
+    qc = utils.get_callback_query_context(update)
     callback = qc.parse_callback()
     torrent_id = int(callback[1])
     cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
@@ -222,7 +222,7 @@ async def torrent_files_inline(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def delete_torrent_inline(update: Update, context: BotContext) -> None:
-    qc = utils.get_inline_query_context(update)
+    qc = utils.get_callback_query_context(update)
     callback = qc.parse_callback()
     torrent_id = int(callback[1])
     cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
@@ -239,7 +239,7 @@ async def delete_torrent_inline(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def delete_torrent_action_inline(update: Update, context: BotContext) -> None:
-    qc = utils.get_inline_query_context(update)
+    qc = utils.get_callback_query_context(update)
     callback = qc.parse_callback()
     torrent_id = int(callback[1])
     cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
@@ -304,7 +304,7 @@ async def torrent_url_handler(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def torrent_adding_actions(update: Update, context: BotContext) -> None:
-    qc = utils.get_inline_query_context(update)
+    qc = utils.get_callback_query_context(update)
     callback = qc.parse_callback()
     if len(callback) == 3:
         torrent_id = int(callback[1])
@@ -457,7 +457,7 @@ async def post_init(application: Application[Any, BotContext, Any, Any, Any, Any
 
     if config.NOTIFICATIONS_ENABLED:
         if not application.job_queue:
-            raise RuntimeError("Job queue is not available")
+            raise RuntimeError("JobQueue is not configured")
 
         application.job_queue.run_repeating(
             monitor_torrent_completion,

@@ -16,7 +16,7 @@ Handler = Callable[[Update, BotContext], Coroutine[Any, Any, Any]]
 
 
 @dataclass(frozen=True, slots=True)
-class InlineQueryContext:
+class CallbackQueryContext:
     query: CallbackQuery
     data: str
     message: Message
@@ -33,13 +33,13 @@ class InlineQueryContext:
         return self.data.split("_")
 
 
-def get_inline_query_context(update: Update) -> InlineQueryContext:
+def get_callback_query_context(update: Update) -> CallbackQueryContext:
     query = update.callback_query
     if query is None or query.data is None:
         raise ValueError("Invalid callback query")
     if not isinstance(query.message, Message):
         raise ValueError("Message is not accessible")
-    return InlineQueryContext(query=query, data=query.data, message=query.message)
+    return CallbackQueryContext(query=query, data=query.data, message=query.message)
 
 
 def get_callback_data(update: Update) -> tuple[CallbackQuery, str]:
