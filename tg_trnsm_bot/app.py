@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
-from telegram import BotCommand, Message, Update
+from telegram import BotCommand, Update
 from telegram.error import BadRequest
 from telegram.ext import (
     Application,
@@ -126,66 +126,62 @@ async def get_torrents_command(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def get_torrents_inline(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None and isinstance(query.message, Message)
-    callback = query.data.split("_")
+    qc = utils.get_inline_query_context(update)
+    callback = qc.parse_callback()
     start_point = int(callback[1])
-    cancel_torrent_update_job(context, query.message.chat_id, query.message.message_id)
+    cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
     torrent_list, keyboard = menus.get_torrents(start_point)
     if len(callback) == 3 and callback[2] == "reload":
         try:
-            await query.edit_message_text(text=torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2")
-            await query.answer(text="Reloaded")
+            await qc.query.edit_message_text(text=torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2")
+            await qc.query.answer(text="Reloaded")
         except BadRequest:
-            await query.answer(text="Nothing to reload")
+            await qc.query.answer(text="Nothing to reload")
     else:
-        await query.answer()
-        await query.edit_message_text(text=torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2")
+        await qc.query.answer()
+        await qc.query.edit_message_text(text=torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2")
 
 
 @utils.whitelist
 async def torrent_menu_inline(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None and isinstance(query.message, Message)
-    cb = TorrentCallback.parse(query.data)
-    chat_id = query.message.chat_id
-    message_id = query.message.message_id
+    qc = utils.get_inline_query_context(update)
+    cb = TorrentCallback.parse(qc.data)
 
     if cb.action == "start":
         menus.start_torrent(cb.torrent_id)
-        await query.answer(text="Started")
+        await qc.query.answer(text="Started")
     elif cb.action == "stop":
         menus.stop_torrent(cb.torrent_id)
-        await query.answer(text="Stopped")
+        await qc.query.answer(text="Stopped")
     elif cb.action == "verify":
         menus.verify_torrent(cb.torrent_id)
-        await query.answer(text="Verifying")
+        await qc.query.answer(text="Verifying")
 
     try:
         status = menus.get_torrent_status(cb.torrent_id)
     except KeyError:
-        await query.answer(text="Torrent no longer exists")
-        cancel_torrent_update_job(context, chat_id, message_id)
+        await qc.query.answer(text="Torrent no longer exists")
+        cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
         text, reply_markup = menus.get_torrents()
-        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
+        await qc.query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
         return
 
     should_auto_update = status in AUTO_UPDATE_STATUSES or cb.action in ACTIONS_REQUIRING_AUTO_UPDATE
     auto_refresh_remaining = AUTO_UPDATE_DURATION_SEC if should_auto_update else None
     text, reply_markup = menus.torrent_menu(cb.torrent_id, auto_refresh_remaining=auto_refresh_remaining)
 
-    cancel_torrent_update_job(context, chat_id, message_id)
+    cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
 
     if cb.action == "reload":
         try:
-            await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
-            await query.answer(text="Reloaded")
+            await qc.query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
+            await qc.query.answer(text="Reloaded")
         except BadRequest:
-            await query.answer(text="Nothing to reload")
+            await qc.query.answer(text="Nothing to reload")
     else:
-        await query.answer()
+        await qc.query.answer()
         try:
-            await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
+            await qc.query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
         except BadRequest as exc:
             if not str(exc).startswith("Message is not modified"):
                 raise
@@ -195,72 +191,69 @@ async def torrent_menu_inline(update: Update, context: BotContext) -> None:
             update_torrent_status,
             interval=AUTO_UPDATE_INTERVAL_SEC,
             first=AUTO_UPDATE_INTERVAL_SEC,
-            data={"chat_id": chat_id, "message_id": message_id, "torrent_id": cb.torrent_id, "iteration": 0},
-            name=get_job_name(chat_id, message_id),
+            data={"chat_id": qc.chat_id, "message_id": qc.message_id, "torrent_id": cb.torrent_id, "iteration": 0},
+            name=get_job_name(qc.chat_id, qc.message_id),
         )
 
 
 @utils.whitelist
 async def torrent_files_inline(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None and isinstance(query.message, Message)
-    callback = query.data.split("_")
+    qc = utils.get_inline_query_context(update)
+    callback = qc.parse_callback()
     torrent_id = int(callback[1])
-    cancel_torrent_update_job(context, query.message.chat_id, query.message.message_id)
+    cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
     try:
         text, reply_markup = menus.get_files(torrent_id)
     except KeyError:
-        await query.answer(text="Torrent no longer exists")
+        await qc.query.answer(text="Torrent no longer exists")
         text, reply_markup = menus.get_torrents()
-        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
+        await qc.query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
     else:
         if len(callback) == 3 and callback[2] == "reload":
             try:
-                await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
-                await query.answer(text="Reloaded")
+                await qc.query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
+                await qc.query.answer(text="Reloaded")
             except BadRequest:
-                await query.answer(text="Nothing to reload")
+                await qc.query.answer(text="Nothing to reload")
         else:
-            await query.answer()
-            await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
+            await qc.query.answer()
+            await qc.query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
 
 
 @utils.whitelist
 async def delete_torrent_inline(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None and isinstance(query.message, Message)
-    callback = query.data.split("_")
+    qc = utils.get_inline_query_context(update)
+    callback = qc.parse_callback()
     torrent_id = int(callback[1])
-    cancel_torrent_update_job(context, query.message.chat_id, query.message.message_id)
+    cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
     try:
         text, reply_markup = menus.delete_menu(torrent_id)
     except KeyError:
-        await query.answer(text="Torrent no longer exists")
+        await qc.query.answer(text="Torrent no longer exists")
         text, reply_markup = menus.get_torrents()
-        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
+        await qc.query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
     else:
-        await query.answer()
-        await query.edit_message_text(text=text, reply_markup=reply_markup)
+        await qc.query.answer()
+        await qc.query.edit_message_text(text=text, reply_markup=reply_markup)
 
 
 @utils.whitelist
 async def delete_torrent_action_inline(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None and isinstance(query.message, Message)
-    callback = query.data.split("_")
+    qc = utils.get_inline_query_context(update)
+    callback = qc.parse_callback()
     torrent_id = int(callback[1])
-    cancel_torrent_update_job(context, query.message.chat_id, query.message.message_id)
+    cancel_torrent_update_job(context, qc.chat_id, qc.message_id)
     if len(callback) == 3 and callback[2] == "data":
         menus.delete_torrent(torrent_id, True)
     else:
         menus.delete_torrent(torrent_id)
-    await query.answer(text="Deleted")
+    await qc.query.answer(text="Deleted")
     await asyncio.sleep(0.1)
     torrent_list, keyboard = menus.get_torrents()
     if torrent_list == "Nothing to display":
-        await query.delete_message()
+        await qc.query.delete_message()
     else:
-        await query.edit_message_text(text=torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2")
+        await qc.query.edit_message_text(text=torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2")
 
 
 @utils.whitelist
@@ -311,39 +304,37 @@ async def torrent_url_handler(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def torrent_adding_actions(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None and isinstance(query.message, Message)
-    callback = query.data.split("_")
+    qc = utils.get_inline_query_context(update)
+    callback = qc.parse_callback()
     if len(callback) == 3:
         torrent_id = int(callback[1])
         if callback[2] == "start":
             menus.start_torrent(torrent_id)
             text, reply_markup = menus.torrent_menu(torrent_id, auto_refresh_remaining=AUTO_UPDATE_DURATION_SEC)
-            await query.answer(text="Started")
-            await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
+            await qc.query.answer(text="Started")
+            await qc.query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
             context.job_queue.run_repeating(
                 update_torrent_status,
                 interval=AUTO_UPDATE_INTERVAL_SEC,
                 first=AUTO_UPDATE_INTERVAL_SEC,
                 data={
-                    "chat_id": query.message.chat_id,
-                    "message_id": query.message.message_id,
+                    "chat_id": qc.chat_id,
+                    "message_id": qc.message_id,
                     "torrent_id": torrent_id,
                     "iteration": 0,
                 },
-                name=get_job_name(query.message.chat_id, query.message.message_id),
+                name=get_job_name(qc.chat_id, qc.message_id),
             )
         elif callback[2] == "cancel":
             menus.delete_torrent(torrent_id, True)
-            await query.answer(text="Canceled")
-            await query.edit_message_text("Torrent deleted")
+            await qc.query.answer(text="Canceled")
+            await qc.query.edit_message_text("Torrent deleted")
 
 
 @utils.whitelist
 async def torrent_adding(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None
-    callback = query.data.split("_")
+    query, data = utils.get_callback_data(update)
+    callback = data.split("_")
     torrent_id = int(callback[1])
     text, reply_markup = menus.add_menu(torrent_id)
     await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
@@ -351,9 +342,8 @@ async def torrent_adding(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def edit_file(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None
-    callback = query.data.split("_")
+    query, data = utils.get_callback_data(update)
+    callback = data.split("_")
     torrent_id = int(callback[1])
     file_id = int(callback[2])
     to_state = int(callback[3])
@@ -365,9 +355,8 @@ async def edit_file(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def select_for_download(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None
-    callback = query.data.split("_")
+    query, data = utils.get_callback_data(update)
+    callback = data.split("_")
     torrent_id = int(callback[1])
     text, reply_markup = menus.select_files_add_menu(torrent_id)
     await query.answer()
@@ -376,9 +365,8 @@ async def select_for_download(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def select_file(update: Update, context: BotContext) -> None:
-    query = update.callback_query
-    assert query is not None and query.data is not None
-    callback = query.data.split("_")
+    query, data = utils.get_callback_data(update)
+    callback = data.split("_")
     torrent_id = int(callback[1])
     file_id = int(callback[2])
     to_state = int(callback[3])
