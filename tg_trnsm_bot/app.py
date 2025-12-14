@@ -2,15 +2,14 @@ import asyncio
 import logging
 import re
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal, cast
 
-from telegram import Update
+from telegram import Message, Update
 from telegram.error import BadRequest
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
     CommandHandler,
-    ContextTypes,
     MessageHandler,
     filters,
 )
@@ -18,6 +17,7 @@ from telegram.helpers import escape_markdown
 from transmission_rpc.error import TransmissionError
 
 from tg_trnsm_bot import config, menus, utils
+from tg_trnsm_bot.context import BotContext, BotContextTypes
 from tg_trnsm_bot.logger import init_logger
 
 logger = logging.getLogger(__name__)
@@ -44,24 +44,22 @@ class TorrentCallback:
     @classmethod
     def parse(cls, data: str) -> TorrentCallback:
         parts = data.split("_")
-        return cls(
-            torrent_id=int(parts[1]),
-            action=parts[2] if len(parts) == 3 else "view",
-        )
+        action: TorrentAction = cast(TorrentAction, parts[2]) if len(parts) == 3 else "view"
+        return cls(torrent_id=int(parts[1]), action=action)
 
 
 def get_job_name(chat_id: int, message_id: int) -> str:
     return f"torrent_update_{chat_id}_{message_id}"
 
 
-def cancel_torrent_update_job(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int) -> None:
+def cancel_torrent_update_job(context: BotContext, chat_id: int, message_id: int) -> None:
     job_name = get_job_name(chat_id, message_id)
     jobs = context.job_queue.get_jobs_by_name(job_name)
     for job in jobs:
         job.schedule_removal()
 
 
-async def update_torrent_status(context: ContextTypes.DEFAULT_TYPE) -> None:
+async def update_torrent_status(context: BotContext) -> None:
     job = context.job
     if job is None or not isinstance(job.data, dict):
         return
@@ -99,32 +97,37 @@ async def update_torrent_status(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 @utils.whitelist
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, context: BotContext) -> None:
+    assert update.message is not None
     text = menus.menu()
     await update.message.reply_text(text)
 
 
 @utils.whitelist
-async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def add(update: Update, context: BotContext) -> None:
+    assert update.message is not None
     text = menus.add_torrent()
     await update.message.reply_text(text)
 
 
 @utils.whitelist
-async def memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def memory(update: Update, context: BotContext) -> None:
+    assert update.message is not None
     formatted_memory = menus.get_memory()
     await update.message.reply_text(formatted_memory)
 
 
 @utils.whitelist
-async def get_torrents_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_torrents_command(update: Update, context: BotContext) -> None:
+    assert update.message is not None
     torrent_list, keyboard = menus.get_torrents()
     await update.message.reply_text(torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2")
 
 
 @utils.whitelist
-async def get_torrents_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_torrents_inline(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None and isinstance(query.message, Message)
     callback = query.data.split("_")
     start_point = int(callback[1])
     cancel_torrent_update_job(context, query.message.chat_id, query.message.message_id)
@@ -141,8 +144,9 @@ async def get_torrents_inline(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 @utils.whitelist
-async def torrent_menu_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def torrent_menu_inline(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None and isinstance(query.message, Message)
     cb = TorrentCallback.parse(query.data)
     chat_id = query.message.chat_id
     message_id = query.message.message_id
@@ -197,8 +201,9 @@ async def torrent_menu_inline(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 @utils.whitelist
-async def torrent_files_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def torrent_files_inline(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None and isinstance(query.message, Message)
     callback = query.data.split("_")
     torrent_id = int(callback[1])
     cancel_torrent_update_job(context, query.message.chat_id, query.message.message_id)
@@ -221,8 +226,9 @@ async def torrent_files_inline(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 @utils.whitelist
-async def delete_torrent_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def delete_torrent_inline(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None and isinstance(query.message, Message)
     callback = query.data.split("_")
     torrent_id = int(callback[1])
     cancel_torrent_update_job(context, query.message.chat_id, query.message.message_id)
@@ -238,8 +244,9 @@ async def delete_torrent_inline(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 @utils.whitelist
-async def delete_torrent_action_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def delete_torrent_action_inline(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None and isinstance(query.message, Message)
     callback = query.data.split("_")
     torrent_id = int(callback[1])
     cancel_torrent_update_job(context, query.message.chat_id, query.message.message_id)
@@ -257,7 +264,8 @@ async def delete_torrent_action_inline(update: Update, context: ContextTypes.DEF
 
 
 @utils.whitelist
-async def torrent_file_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def torrent_file_handler(update: Update, context: BotContext) -> None:
+    assert update.message is not None and update.message.document is not None
     file = await context.bot.get_file(update.message.document)
     file_bytes = await file.download_as_bytearray()
     try:
@@ -271,7 +279,7 @@ async def torrent_file_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 @utils.whitelist
-async def magnet_url_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def magnet_url_handler(update: Update, context: BotContext) -> None:
     if update.message is None or update.message.text is None:
         return
     magnet_urls = MAGNET_PATTERN.findall(update.message.text)
@@ -286,7 +294,7 @@ async def magnet_url_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 @utils.whitelist
-async def torrent_url_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def torrent_url_handler(update: Update, context: BotContext) -> None:
     if update.message is None or update.message.text is None:
         return
     torrent_urls = TORRENT_URL_PATTERN.findall(update.message.text)
@@ -302,8 +310,9 @@ async def torrent_url_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 @utils.whitelist
-async def torrent_adding_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def torrent_adding_actions(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None and isinstance(query.message, Message)
     callback = query.data.split("_")
     if len(callback) == 3:
         torrent_id = int(callback[1])
@@ -331,8 +340,9 @@ async def torrent_adding_actions(update: Update, context: ContextTypes.DEFAULT_T
 
 
 @utils.whitelist
-async def torrent_adding(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def torrent_adding(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None
     callback = query.data.split("_")
     torrent_id = int(callback[1])
     text, reply_markup = menus.add_menu(torrent_id)
@@ -340,8 +350,9 @@ async def torrent_adding(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @utils.whitelist
-async def edit_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def edit_file(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None
     callback = query.data.split("_")
     torrent_id = int(callback[1])
     file_id = int(callback[2])
@@ -353,8 +364,9 @@ async def edit_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @utils.whitelist
-async def select_for_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def select_for_download(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None
     callback = query.data.split("_")
     torrent_id = int(callback[1])
     text, reply_markup = menus.select_files_add_menu(torrent_id)
@@ -363,8 +375,9 @@ async def select_for_download(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 @utils.whitelist
-async def select_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def select_file(update: Update, context: BotContext) -> None:
     query = update.callback_query
+    assert query is not None and query.data is not None
     callback = query.data.split("_")
     torrent_id = int(callback[1])
     file_id = int(callback[2])
@@ -375,7 +388,7 @@ async def select_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
 
 
-async def send_completion_notification(context: ContextTypes.DEFAULT_TYPE, torrent_name: str) -> None:
+async def send_completion_notification(context: BotContext, torrent_name: str) -> None:
     message = f"*{escape_markdown(torrent_name, 2)} downloaded*"
     for chat_id in config.WHITELIST:
         try:
@@ -388,7 +401,7 @@ async def send_completion_notification(context: ContextTypes.DEFAULT_TYPE, torre
             logger.warning(f"Failed to send notification to {chat_id}: {e}")
 
 
-async def monitor_torrent_completion(context: ContextTypes.DEFAULT_TYPE) -> None:
+async def monitor_torrent_completion(context: BotContext) -> None:
     global _monitor_initialized
 
     try:
@@ -430,14 +443,14 @@ async def monitor_torrent_completion(context: ContextTypes.DEFAULT_TYPE) -> None
         del monitored_torrents[torrent_id]
 
 
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def error_handler(update: object, context: BotContext) -> None:
     logger.exception("Exception while handling an update", exc_info=context.error)
 
     text = "Something went wrong"
-    if update and update.callback_query:
+    if isinstance(update, Update) and update.callback_query:
         query = update.callback_query
         await query.edit_message_text(text=text, parse_mode="MarkdownV2")
-    elif update and update.message:
+    elif isinstance(update, Update) and update.message:
         await update.message.reply_text(text)
 
 
@@ -450,13 +463,16 @@ COMMANDS: dict[str, tuple[str | None, utils.Handler]] = {
 }
 
 
-async def post_init(application: Application[ContextTypes.DEFAULT_TYPE]) -> None:  # type: ignore[type-arg]
+async def post_init(application: Application[Any, BotContext, Any, Any, Any, Any]) -> None:
     from telegram import BotCommand
 
     bot_commands = [BotCommand(name, desc) for name, (desc, _) in COMMANDS.items() if desc]
     await application.bot.set_my_commands(bot_commands)
 
     if config.NOTIFICATIONS_ENABLED:
+        if not application.job_queue:
+            raise RuntimeError("Job queue is not available")
+
         application.job_queue.run_repeating(
             monitor_torrent_completion,
             interval=config.NOTIFICATION_CHECK_INTERVAL_SEC,
@@ -473,7 +489,7 @@ def run() -> None:
         log_timestamp_format=config.LOG_TIMESTAMP_FORMAT,
     )
 
-    application = Application.builder().token(config.TOKEN).post_init(post_init).build()
+    application = Application.builder().token(config.TOKEN).context_types(BotContextTypes).post_init(post_init).build()
 
     for name, (_, handler) in COMMANDS.items():
         application.add_handler(CommandHandler(name, handler))

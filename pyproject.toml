@@ -11,8 +11,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "mypy==1.18.2",
+    "mypy==1.19.0",
 ]
+
+[tool.uv]
+default-groups = ["dev"]
 
 [build-system]
 requires = ["hatchling"]
@@ -50,4 +53,3 @@ python_version = "3.14"
 strict = true
 show_error_codes = true
 no_implicit_optional = false
-disable_error_code = ["no-untyped-def", "union-attr", "arg-type", "no-untyped-call"]
