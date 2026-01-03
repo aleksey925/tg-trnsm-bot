@@ -1,28 +1,12 @@
-FROM debian:13-slim AS exporter
-
-RUN apt-get update \
-    && apt-get -y --no-install-recommends install \
-       sudo curl git ca-certificates build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-ENV MISE_DATA_DIR="/mise"
-ENV MISE_CONFIG_DIR="/mise"
-ENV MISE_CACHE_DIR="/mise/cache"
-ENV MISE_INSTALL_PATH="/usr/local/bin/mise"
-ENV PATH="/mise/shims:$PATH"
-
-COPY mise.toml ./
-
-RUN curl https://mise.run | sh && \
-    mise trust && \
-    mise i
+FROM python:3.14-slim-bookworm AS exporter
 
 WORKDIR /opt/app/
 
-COPY pyproject.toml uv.lock* ./
+COPY mise.toml pyproject.toml uv.lock* ./
 
-RUN uv export -o requirements.txt --no-default-groups --no-hashes --no-annotate --frozen --no-emit-project
+RUN UV_VERSION=$(sed -n 's/^uv = "\(.*\)"/\1/p' mise.toml) && \
+    pip install --no-cache-dir uv==${UV_VERSION} && \
+    uv export -o requirements.txt --no-default-groups --no-hashes --no-annotate --frozen --no-emit-project
 
 #########################################################################
 FROM python:3.14-slim-bookworm
@@ -32,8 +16,7 @@ WORKDIR /opt/app/
 COPY --from=exporter /opt/app/requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt && \
-    find /usr/local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
-    find /usr/local -type f -name "*.pyc" -delete 2>/dev/null || true && \
+    (find /usr/local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true) && \
     rm -rf /root/.cache /tmp/*
 
 COPY tg_trnsm_bot/ /opt/app/tg_trnsm_bot/

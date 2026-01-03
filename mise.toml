@@ -8,7 +8,8 @@ _.source = { path = ".env.sh", tools = true }
 _.file = { path = ".env", tools = true }
 
 [tools]
-pre-commit = "4.5.0"
-python = "3.14.0"
-ruff = "0.14.8"
-uv = "0.9.9"
+python = "3.14"
+uv = "0.9.21"
+
+[settings.python]
+uv_venv_create_args = ['--seed']
