@@ -1,52 +1,51 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [ "hatchling" ]
+
 [project]
 name = "tg-trnsm-bot"
 version = "0.1.0"
-requires-python = ">=3.14, <4"
+requires-python = ">=3.14,<4"
 dependencies = [
-    "python-telegram-bot[job-queue]>=22.5",
-    "python-dotenv>=1.2.1",
-    "transmission-rpc>=7.0.11",
-    "structlog>=25.5.0",
+  "python-dotenv>=1.2.1",
+  "python-telegram-bot[job-queue]>=22.5",
+  "structlog>=25.5",
+  "transmission-rpc>=7.0.11",
 ]
 
 [dependency-groups]
 dev = [
-    "mypy==1.19.0",
+  "mypy==1.19.1",
+  "prek==0.2.24",
+  "ruff==0.14.10",
 ]
 
 [tool.uv]
-default-groups = ["dev"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+default-groups = [ "dev" ]
 
 [tool.ruff]
 target-version = "py314"
 line-length = 120
 
-[tool.ruff.format]
-quote-style = "double"
-
-[tool.ruff.lint]
-select = [
-    "A",        # flake8-builtins
-    "E",        # pycodestyle errors
-    "W",        # pycodestyle warnings
-    "F",        # pyflakes
-    "I",        # isort
-    "N",        # pep8-naming
-    "T20",      # flake8-print
-    "C90",      # flake8-complexity (mccabe)
-    "UP",       # pyupgrade
-    "RUF",      # ruff
-    "S",        # flake8-bandit
-    "PLC0415",  # import-outside-top-level
+format.quote-style = "double"
+lint.select = [
+  "A",       # flake8-builtins
+  "C90",     # flake8-complexity (mccabe)
+  "E",       # pycodestyle errors
+  "F",       # pyflakes
+  "I",       # isort
+  "N",       # pep8-naming
+  "PLC0415", # import-outside-top-level
+  "RUF",     # ruff
+  "S",       # flake8-bandit
+  "T20",     # flake8-print
+  "UP",      # pyupgrade
+  "W",       # pycodestyle warnings
 ]
-ignore = [
-    "A003",  # class attribute {name} is shadowing a python builtin
-    "S101",  # use of assert detected
-    "S104",  # possible binding to all interfaces (expected in Docker)
+lint.ignore = [
+  "A003", # class attribute {name} is shadowing a python builtin
+  "S101", # use of assert detected
+  "S104", # possible binding to all interfaces (expected in Docker)
 ]
 
 [tool.mypy]
