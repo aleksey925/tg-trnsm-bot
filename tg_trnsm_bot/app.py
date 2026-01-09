@@ -31,6 +31,7 @@ MAGNET_PATTERN = re.compile(r"magnet:\?xt=urn:btih:[^\s]+")
 TORRENT_URL_PATTERN = re.compile(r"https?://[^\s]+\.torrent\b", re.IGNORECASE)
 
 monitored_torrents: dict[int, dict[str, str | float]] = {}
+torrent_owners: dict[int, int] = {}  # torrent_id → user_id (who added the torrent)
 _monitor_initialized = False
 
 TorrentAction = Literal["view", "start", "stop", "verify", "reload"]
@@ -258,7 +259,7 @@ async def delete_torrent_action_inline(update: Update, context: BotContext) -> N
 
 @utils.whitelist
 async def torrent_file_handler(update: Update, context: BotContext) -> None:
-    assert update.message is not None and update.message.document is not None
+    assert update.message is not None and update.message.document is not None and update.effective_user is not None
     file = await context.bot.get_file(update.message.document)
     file_bytes = await file.download_as_bytearray()
     try:
@@ -266,6 +267,7 @@ async def torrent_file_handler(update: Update, context: BotContext) -> None:
     except TransmissionError as e:
         await update.message.reply_text(f"Failed to add torrent: {e}", do_quote=True)
     else:
+        torrent_owners[torrent.id] = update.effective_user.id
         await update.message.reply_text("Torrent added", do_quote=True)
         text, reply_markup = menus.add_menu(torrent.id)
         await update.message.reply_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
@@ -273,7 +275,7 @@ async def torrent_file_handler(update: Update, context: BotContext) -> None:
 
 @utils.whitelist
 async def magnet_url_handler(update: Update, context: BotContext) -> None:
-    if update.message is None or update.message.text is None:
+    if update.message is None or update.message.text is None or update.effective_user is None:
         return
     magnet_urls = MAGNET_PATTERN.findall(update.message.text)
     for magnet_url in magnet_urls:
@@ -282,13 +284,14 @@ async def magnet_url_handler(update: Update, context: BotContext) -> None:
         except TransmissionError as e:
             await update.message.reply_text(f"Failed to add torrent: {e}", do_quote=True)
             continue
+        torrent_owners[torrent.id] = update.effective_user.id
         text, reply_markup = menus.add_menu(torrent.id)
         await update.message.reply_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
 
 
 @utils.whitelist
 async def torrent_url_handler(update: Update, context: BotContext) -> None:
-    if update.message is None or update.message.text is None:
+    if update.message is None or update.message.text is None or update.effective_user is None:
         return
     torrent_urls = TORRENT_URL_PATTERN.findall(update.message.text)
     for torrent_url in torrent_urls:
@@ -297,7 +300,7 @@ async def torrent_url_handler(update: Update, context: BotContext) -> None:
         except TransmissionError as e:
             await update.message.reply_text(f"Failed to add torrent: {e}", do_quote=True)
             continue
-
+        torrent_owners[torrent.id] = update.effective_user.id
         text, reply_markup = menus.add_menu(torrent.id)
         await update.message.reply_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
 
@@ -376,17 +379,18 @@ async def select_file(update: Update, context: BotContext) -> None:
     await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="MarkdownV2")
 
 
-async def send_completion_notification(context: BotContext, torrent_name: str) -> None:
+async def send_completion_notification(context: BotContext, torrent_name: str, user_id: int | None) -> None:
+    if user_id is None:
+        return
     message = f"*{escape_markdown(torrent_name, 2)} downloaded*"
-    for chat_id in config.WHITELIST:
-        try:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=message,
-                parse_mode="MarkdownV2",
-            )
-        except Exception as e:
-            logger.warning(f"Failed to send notification to {chat_id}: {e}")
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=message,
+            parse_mode="MarkdownV2",
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send notification to {user_id}: {e}")
 
 
 async def monitor_torrent_completion(context: BotContext) -> None:
@@ -417,7 +421,8 @@ async def monitor_torrent_completion(context: BotContext) -> None:
 
         if current_progress == 100.0 and current_status in ("seeding", "stopped"):
             if previous_state is None or float(previous_state["progress"]) < 100.0:
-                await send_completion_notification(context, torrent.name)
+                owner_id = torrent_owners.get(torrent_id)
+                await send_completion_notification(context, torrent.name, owner_id)
 
         monitored_torrents[torrent_id] = {
             "status": current_status,
@@ -429,6 +434,7 @@ async def monitor_torrent_completion(context: BotContext) -> None:
     removed_ids = set(monitored_torrents.keys()) - current_torrent_ids
     for torrent_id in removed_ids:
         del monitored_torrents[torrent_id]
+        torrent_owners.pop(torrent_id, None)
 
 
 async def error_handler(update: object, context: BotContext) -> None:
