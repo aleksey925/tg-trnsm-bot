@@ -167,7 +167,7 @@ def torrent_menu(
             ],
             [
                 telegram.InlineKeyboardButton(
-                    f"🔄 {auto_refresh_remaining}s" if auto_refresh_remaining else "🔄 Reload",
+                    f"🔄 {auto_refresh_remaining}s" if auto_refresh_remaining else "🔄 Refresh torrent",
                     callback_data=f"torrent_{torrent_id}_reload",
                 ),
             ],
@@ -242,7 +242,7 @@ def get_files(torrent_id: int) -> tuple[str, telegram.InlineKeyboardMarkup]:
     control_buttons = [
         [
             telegram.InlineKeyboardButton(
-                "🔄 Reload",
+                "🔄 Refresh files",
                 callback_data=f"torrentsfiles_{torrent_id}_reload",
             )
         ],
@@ -294,7 +294,7 @@ def get_torrents(start_point: int = 0) -> tuple[str, telegram.InlineKeyboardMark
             row += 1
             keyboard[row].append(
                 telegram.InlineKeyboardButton(
-                    "🔄 Reload",
+                    "🔄 Refresh list",
                     callback_data=f"torrentsgoto_{start_point}_reload",
                 )
             )
@@ -319,7 +319,7 @@ def get_torrents(start_point: int = 0) -> tuple[str, telegram.InlineKeyboardMark
         row += 1
         keyboard[row].append(
             telegram.InlineKeyboardButton(
-                "🔄 Reload",
+                "🔄 Refresh list",
                 callback_data=f"torrentsgoto_{start_point}_reload",
             )
         )
